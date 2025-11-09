@@ -4,7 +4,7 @@ A docker image to automatically import newly saved spotify songs into jellyfin
 
 Roughly it works like this:
 - Move all newly saved songs to a user created "new-songs" playlist. see `tool_scripts/spotify_update_playlist.py`
-- Use tsar https://github.com/SolidHal/tsar to get all songs in the playlist, then empties the playlist
+- Use tsar https://github.com/SolidEva/tsar to get all songs in the playlist, then empties the playlist
 - Copy the song files into the jellyfin library in the proper `artist/album/song.mp3` organization, then add all the songs to a monthly playlist named `Month Year`. see `tool_scripts/jelly_import.py`
 
 ## requirements
@@ -16,7 +16,7 @@ Roughly it works like this:
 ### build the docker image
 
 ```
-docker build -t solidhal/jellyfin-spotify .
+docker build -t solideva/jellyfin-spotify .
 ```
 
 ### generate a spotipy authentication cache token
@@ -53,5 +53,5 @@ docker run \
 -e JELLYFIN_SERVER="http://192.168.10.10" \
 -e PUID="1000" \
 -e PGID="1000" \
-solidhal/jellyfin-spotify
+solideva/jellyfin-spotify
 ```

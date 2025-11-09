@@ -35,7 +35,7 @@ RUN apt-get update && apt-get install -y  --no-install-recommends \
     ffmpeg
 
 # Get python packages
-RUN pip3 install \
+RUN pip3 install --break-system-packages \
     py-sonic \
     click \
     eyed3 \

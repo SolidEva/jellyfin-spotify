@@ -26,7 +26,7 @@ ENV SCHEDULE_FREQUENCY=""
 # spotipy authentication cache file mapped to "/.cache-<spotify_username>"
 
 ENV LANG C.UTF-8
-ENV TZ America/Chicago
+ENV TZ Europe/Berlin
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # Get Ubuntu packages
@@ -39,7 +39,7 @@ RUN apt-get update && apt-get install -y  --no-install-recommends \
     ffmpeg
 
 # Get python packages
-RUN pip3 install \
+RUN pip3 install --break-system-packages \
     py-sonic \
     click \
     eyed3 \

@@ -36,11 +36,21 @@ create a playlist in spotify for the tool to work in
 set the playlist description with a timestamp in the format `2022-07-08 00:46:19.285023+00:00`
 this timestamp is how the tool will know what saved songs are new, and should be added to the playlist
 
+### Generate a credential.json for librespot
+get librespot and run
+```
+librespot --enable-oauth --system-cache cache_dir
+```
+go through the login process
+once done, there will be a credendials.json file in the cache_dir
+copy that to your librespot_cache_dir
+
 ## run example
 
 ```
 docker run \
 -v /home/user/.cache-username:/.cache-username \
+-v /home/user/librespot_cache_dir:/librespot_cache_dir \
 -v /home/user/jellyfin/music_library:/jellyfin \
 -e SPOTIPY_CLIENT_ID="" \
 -e SPOTIPY_CLIENT_SECRET="" \

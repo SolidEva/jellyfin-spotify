@@ -33,6 +33,7 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN apt-get update && apt-get install -y  --no-install-recommends \
     curl \
     wget \
+    patchelf \
     python3 \
     git \
     python3-pip \
@@ -51,7 +52,8 @@ RUN rm -rf /var/cache/apt/archives && rm -rf /usr/share/doc && rm -rf /usr/share
 
 # Get librespot, use prebuilt binary to minimize image size
 # saves ~2GB of image size, and a ton of time
-RUN wget https://github.com/SolidHal/librespot/releases/download/v0.6.0-passthrough/librespot-release-$(arch) -O /usr/bin/librespot && chmod +x /usr/bin/librespot
+RUN wget https://github.com/SolidEva/librespot/releases/download/v0.8-beta-passthrough/librespot-release-$(arch) -O /usr/bin/librespot && chmod +x /usr/bin/librespot
+RUN patchelf --set-interpreter /lib/ld-linux-aarch64.so.1 /usr/bin/librespot
 
 # create the user and group
 RUN useradd -u 911 -U -d /config -s /bin/false abc
@@ -63,7 +65,7 @@ RUN mkdir -p /tool_scripts
 RUN touch /tool_scripts/__init__.py
 
 # Get tsar
-RUN git clone https://github.com/SolidHal/tsar.git /tsar
+RUN git clone https://github.com/SolidEva/tsar.git /tsar
 RUN cd tool_scripts && ln -s /tsar/tsar.py tsar.py
 
 # Get supporting scripts

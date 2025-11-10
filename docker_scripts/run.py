@@ -61,9 +61,17 @@ def main():
     if not os.path.isfile(librespot_credentials_json):
         raise ValueError(f"librespot credentials cache file is not avilable at: {librespot_credentials_json}")
 
+    # ensure we have the librespot binary
+    if not os.path.isfile("/usr/bin/librespot"):
+        raise ValueError(f"librespot binary is not available at /usr/bin/librespot")
+
+    # ensure librespot executes
+    subprocess.run(["/usr/bin/librespot", "--help"], shell=False)
+
     # check required all permissions
     verify_writable(jellyfin_library_dir)
     verify_writable(temp_import_dir)
+
 
     def run_update_spotify_playlist():
         print("____ jellyfin-spotify: START updating spotify playlist with new songs _____")

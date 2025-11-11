@@ -40,6 +40,7 @@ def main():
     jellyfin_username = get_envar("JELLYFIN_USERNAME")
     jellyfin_password = get_envar("JELLYFIN_PASSWORD")
     jellyfin_server = get_envar("JELLYFIN_SERVER")
+    jellyfin_library_id = get_envar("JELLYFIN_LIBRARY_ID")
     schedule_frequency = get_envar("SCHEDULE_FREQUENCY")
 
     # ensure we have the required directories
@@ -81,28 +82,38 @@ def main():
     def run_tsar_and_import():
         # update right before we run tsar to ensure we have all of the latest songs
         run_update_spotify_playlist()
-        print("____ jellyfin-spotify: START running tsar ____")
-        tsar.run(output_dir=temp_import_dir,
-                  uri=spotify_playlist_uri,
-                  cache_dir=librespot_cache_dir,
-                  username=spotify_username,
-                  librespot_binary="/usr/bin/librespot",
-                  empty_playlist=False)
-        print("____ jellyfin-spotify: FINISHED running tsar ____")
 
-        print("_____ jellyfin-spotify: START importing new songs into jellyfin ____")
-        jellyfin_import.run(jellyfin_username=jellyfin_username,
-                             jellyfin_password=jellyfin_password,
-                             server=jellyfin_server,
-                             import_dir=temp_import_dir,
-                             jellyfin_library_dir=jellyfin_library_dir,
-                             empty_import_dir=True)
-        print("_____ jellyfin-spotify: FINISHED importing new songs into jellyfin ____")
+        completed_song_uris = []
+        while completed_song_uris is not None:
+            print("____ jellyfin-spotify: START running tsar ____")
+            completed_song_uris = tsar.run(output_dir=temp_import_dir,
+                                           uri=spotify_playlist_uri,
+                                           cache_dir=librespot_cache_dir,
+                                           username=spotify_username,
+                                           librespot_binary="/usr/bin/librespot",
+                                           empty_playlist=False,
+                                           track_count_limit=1)
+            print("____ jellyfin-spotify: FINISHED running tsar ____")
+            if completed_song_uris is None:
+                print("completed_song_uris is None, no more songs to process, breaking")
+                break
 
-        print("_____ jellyfin-spotify: START emptying playlist ____")
-        tsar.empty_playlist(uri=spotify_playlist_uri,
-                            username=spotify_username)
-        print("_____ jellyfin-spotify: FINISHED emptying playlist ____")
+            print("_____ jellyfin-spotify: START importing new songs into jellyfin ____")
+            jellyfin_import.run(jellyfin_username=jellyfin_username,
+                                 jellyfin_password=jellyfin_password,
+                                 server=jellyfin_server,
+                                 import_dir=temp_import_dir,
+                                 jellyfin_library_dir=jellyfin_library_dir,
+                                 jellyfin_library_id=jellyfin_library_id,
+                                 empty_import_dir=True)
+            print("_____ jellyfin-spotify: FINISHED importing new songs into jellyfin ____")
+
+            print("_____ jellyfin-spotify: START emptying playlist ____")
+            tsar.remove_tracks_from_playlist(playlist_uri=spotify_playlist_uri,
+                                             track_uris=completed_song_uris,
+                                             username=spotify_username)
+            print("_____ jellyfin-spotify: FINISHED emptying playlist ____")
+
 
     print("____ Running jellyfin-spotify ____")
     print(f"ENVARS: {os.environ}")

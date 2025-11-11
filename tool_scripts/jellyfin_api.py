@@ -83,7 +83,7 @@ class jellyfin:
             # 2) the song artist in in the results artists list
             # 3) there is only one result, this is to handle when artist information gets poorly parsed by
             # jellyfin
-            if song_name in song["Name"] and (song["AlbumArtist"] == artist_name or artist_name in song["Artists"] or len(res) == 1):
+            if song_name in song["Name"] and (song.get("AlbumArtist", None) == artist_name or artist_name in song.get("Artists", None) or len(res) == 1):
                 return song
 
         print(f"unable to find song matching name: {song_name}, artist: {artist_name}, found the following songs: {res}")
@@ -103,7 +103,28 @@ class jellyfin:
                 return task
         return None
 
-    def scan_library(self):
+    def scan_library(self, library_id):
+        # start
+        endpoint = f"Items/{library_id}/Refresh?Recursive=true&ImageRefreshMode=Default&MetadataRefreshMode=Default&ReplaceAllImages=false&RegenerateTrickplay=false&ReplaceAllMetadata=false"
+
+        self.post(endpoint)
+
+        def scanning():
+            state = self.scan_library_status()["State"]
+            if state == "Idle":
+                return False
+            return True
+
+        # busy loop on state
+        time.sleep(2)
+        while(scanning()):
+            print("scanning...")
+            time.sleep(10)
+
+
+        print("library scan complete")
+
+    def scan_all_libraries(self):
         # start
         endpoint = "Library/Refresh"
         self.post(endpoint)

@@ -13,6 +13,7 @@ ENV JELLYFIN_USERNAME=""
 ENV JELLYFIN_PASSWORD=""
 ENV JELLYFIN_SERVER=""
 ENV SCHEDULE_FREQUENCY=""
+ENV JELLYFIN_LIBRARY_ID=""
 #one of:
 #  - NOW  : Run tsar & update jellyfin playlist immediately, and then exit
 #  - <HH:MM> : run tsar & update jellyfin playlist daily at <HH:MM> UTC

@@ -11,6 +11,7 @@ ENV SPOTIPY_REDIRECT_URI=""
 ENV JELLYFIN_USERNAME=""
 ENV JELLYFIN_PASSWORD=""
 ENV JELLYFIN_SERVER=""
+ENV JELLYFIN_LIBRARY_ID=""
 
 ENV SPOTIFY_LINKS=""
 
@@ -22,13 +23,14 @@ ENV SPOTIFY_LINKS=""
 # spotipy authentication cache file mapped to "/.cache-<spotify_username>"
 
 ENV LANG C.UTF-8
-ENV TZ America/Chicago
+ENV TZ Europe/Berlin
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # Get Ubuntu packages
 RUN apt-get update && apt-get install -y  --no-install-recommends \
     curl \
     wget \
+    patchelf \
     python3 \
     git \
     python3-pip \
@@ -47,7 +49,8 @@ RUN rm -rf /var/cache/apt/archives && rm -rf /usr/share/doc && rm -rf /usr/share
 
 # Get librespot, use prebuilt binary to minimize image size
 # saves ~2GB of image size, and a ton of time
-RUN wget https://github.com/SolidHal/librespot/releases/download/v0.6.0-passthrough/librespot-release-$(arch) -O /usr/bin/librespot && chmod +x /usr/bin/librespot
+RUN wget https://github.com/SolidEva/librespot/releases/download/v0.8-beta-passthrough/librespot-release-$(arch) -O /usr/bin/librespot && chmod +x /usr/bin/librespot
+RUN patchelf --set-interpreter /lib/ld-linux-aarch64.so.1 /usr/bin/librespot
 
 # create the user and group
 RUN useradd -u 911 -U -d /config -s /bin/false abc
@@ -73,4 +76,8 @@ ENV PYTHONUNBUFFERED="TRUE"
 
 COPY docker_scripts/entrypoint.sh /entrypoint.sh
 COPY docker_scripts/run_manual.py /run.py
+
+ENV SPOTIFY_URIS_FILE_PATH=""
+ENV FAILED_JELLYFIN_LOOKUPS_PATH=""
+
 ENTRYPOINT ["/entrypoint.sh"]

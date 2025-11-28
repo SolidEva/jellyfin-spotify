@@ -54,13 +54,13 @@ def main():
     # ensure we have the required spotipy api cache
     spotipy_cache = f"/.cache-{spotify_username}"
     if not os.path.isfile(spotipy_cache):
-        raise ValueError(f"spotipy authentication cache file is not avilable at: {spotipy_cache}")
+        raise ValueError(f"spotipy authentication cache file is not available at: {spotipy_cache}")
 
     # ensure we have the required librespot api cache
     librespot_cache_dir = f"/librespot_cache_dir"
     librespot_credentials_json = f"/librespot_cache_dir/credentials.json"
     if not os.path.isfile(librespot_credentials_json):
-        raise ValueError(f"librespot credentials cache file is not avilable at: {librespot_credentials_json}")
+        raise ValueError(f"librespot credentials cache file is not available at: {librespot_credentials_json}")
 
     # ensure we have the librespot binary
     if not os.path.isfile("/usr/bin/librespot"):

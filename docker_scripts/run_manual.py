@@ -40,7 +40,14 @@ def main():
     jellyfin_username = get_envar("JELLYFIN_USERNAME")
     jellyfin_password = get_envar("JELLYFIN_PASSWORD")
     jellyfin_server = get_envar("JELLYFIN_SERVER")
+    jellyfin_library_id = get_envar("JELLYFIN_LIBRARY_ID")
 
+    spotify_links_path = get_envar("SPOTIFY_URIS_FILE_PATH")
+    failed_jellyfin_lookups_path = get_envar("FAILED_JELLYFIN_LOOKUPS_PATH")
+
+    # ensure we can read/write to the status files
+    open(spotify_links_path, "r+").close()
+    open(failed_jellyfin_lookups_path, "r+").close()
 
     # ensure we have the required directories
     jellyfin_library_dir = "/jellyfin"
@@ -53,13 +60,20 @@ def main():
     # ensure we have the required spotipy api cache
     spotipy_cache = f"/.cache-{spotify_username}"
     if not os.path.isfile(spotipy_cache):
-        raise ValueError(f"spotipy authentication cache file is not avilable at: {spotipy_cache}")
+        raise ValueError(f"spotipy authentication cache file is not available at: {spotipy_cache}")
 
     # ensure we have the required librespot api cache
     librespot_cache_dir = f"/librespot_cache_dir"
     librespot_credentials_json = f"/librespot_cache_dir/credentials.json"
     if not os.path.isfile(librespot_credentials_json):
-        raise ValueError(f"librespot credentials cache file is not avilable at: {librespot_credentials_json}")
+        raise ValueError(f"librespot credentials cache file is not available at: {librespot_credentials_json}")
+
+    # ensure we have the librespot binary
+    if not os.path.isfile("/usr/bin/librespot"):
+        raise ValueError(f"librespot binary is not available at /usr/bin/librespot")
+
+    # ensure librespot executes
+    subprocess.run(["/usr/bin/librespot", "--help"], shell=False)
 
     # check required all permissions
     verify_writable(jellyfin_library_dir)
@@ -82,7 +96,8 @@ def main():
                   cache_dir=librespot_cache_dir,
                   username=spotify_username,
                   librespot_binary="/usr/bin/librespot",
-                  empty_playlist=False)
+                  empty_playlist=False,
+                  track_count_limit=999)
         print(f"____ jellyfin-spotify: FINISHED running tsar for uri {uri} ____")
 
         print(f"_____ jellyfin-spotify: START importing new songs into jellyfin  for uri {uri}  ____")
@@ -91,8 +106,10 @@ def main():
                              server=jellyfin_server,
                              import_dir=temp_import_dir,
                              jellyfin_library_dir=jellyfin_library_dir,
+                             jellyfin_library_id=jellyfin_library_id,
                              empty_import_dir=True,
-                             playlist_name=playlist_name)
+                             playlist_name=playlist_name,
+                             failed_lookups_path=failed_jellyfin_lookups_path)
         print(f"_____ jellyfin-spotify: FINISHED importing new songs into jellyfin  for uri {uri} ____")
 
 
@@ -100,7 +117,7 @@ def main():
     print(f"ENVARS: {os.environ}")
 
     # spotify links file is one link per line
-    with open("/spotify_links.txt") as spotify_links_file:
+    with open(spotify_links_path) as spotify_links_file:
         links = spotify_links_file.readlines()
 
     unimported_links = links
@@ -111,8 +128,8 @@ def main():
         # remove the link from the file now that we have successfully imported it
         unimported_links.remove(link)
 
-        open("/spotify_links.txt", "w").close()
-        with open("/spotify_links.txt", "r+") as spotify_links_file:
+        open(spotify_links_path, "w").close()
+        with open(spotify_links_path, "r+") as spotify_links_file:
             for unimported_link in unimported_links:
                 spotify_links_file.write(unimported_link)
 

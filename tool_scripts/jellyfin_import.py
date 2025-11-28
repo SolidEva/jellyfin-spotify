@@ -111,8 +111,7 @@ def import_songs_jellyfin(import_dir, jellyfin_library_dir):
 
     return songs
 
-
-def get_jellyfin_song_id(jelly, song):
+def _get_jellyfin_song_id(jelly, song):
     def sanitize_string(in_string):
         return in_string.lower().lstrip(" ").rstrip("")
 
@@ -234,6 +233,29 @@ def update_playlist(jelly, playlist_id, songs):
     print(f"Added {len(new_ids)} songs to playlist {playlist_id}")
 
 
+def get_jellyfin_song_ids(jelly, jellyfin_library_id, songs):
+    failed_lookups = []
+    successful_lookups = []
+    max_attempts = 3
+    for song in songs:
+        for attempt in range(max_attempts):
+            try:
+                _get_jellyfin_song_id(jelly, song)
+            except ValueError as e:
+                if attempt >= max_attempts:
+                    print("Failed to find song in jellyfin after 6 minutes, moving on")
+                    failed_lookups.append(e)
+                else:
+                    print("Failed to find song in jellyfin, sleeping for 2 minutes before running another scan and trying again")
+                    time.sleep(120)
+                    jelly.scan_library(jellyfin_library_id)
+            else:
+              successful_lookups.append(song)
+              break
+
+    return (successful_lookups, failed_lookups)
+
+
 def run(jellyfin_username, jellyfin_password, server, import_dir, jellyfin_library_dir, jellyfin_library_id, empty_import_dir):
     if not os.path.isdir(import_dir):
         raise ValueError(f"import directory does not exist: {import_dir}")
@@ -244,31 +266,15 @@ def run(jellyfin_username, jellyfin_password, server, import_dir, jellyfin_libra
 
     jelly = jellyfin_api.jellyfin(server, jellyfin_username, jellyfin_password)
     songs = import_songs_jellyfin(import_dir, jellyfin_library_dir)
+
     jelly.scan_library(jellyfin_library_id)
-    for song in songs:
-        try:
-            get_jellyfin_song_id(jelly, song)
-        except ValueError:
-            print("Failed to find song in jellyfin, sleeping for 2 minutes before running another scan and trying again")
-            time.sleep(120)
-            jelly.scan_library(jellyfin_library_id)
-            try:
-                get_jellyfin_song_id(jelly, song)
-            except ValueError :
-                print("Failed to find song in jellyfin, sleeping for 4 minutes before running another scan and trying again")
-                time.sleep(240)
-                jelly.scan_library(jellyfin_library_id)
-                try:
-                    get_jellyfin_song_id(jelly, song)
-                except ValueError as e:
-                    # hold the error until later so we can try to do our best creating and filling the playlist
-                    print("Failed to find song in jellyfin after 6 minutes, moving on")
-                    failed_lookups.append(e)
+
+    located_songs, failed_lookups = get_jellyfin_song_ids(jelly, jellyfin_library_id, songs)
 
     date = datetime.datetime.now()
     playlist_name = date.strftime("%Y") + " " + date.strftime("%m") + " " + date.strftime("%B")
     playlist_id = get_create_playlist(jelly, playlist_name)
-    update_playlist(jelly, playlist_id, songs)
+    update_playlist(jelly, playlist_id, located_songs)
 
     if failed_lookups:
         # if we failed some lookups,
@@ -282,26 +288,40 @@ def run(jellyfin_username, jellyfin_password, server, import_dir, jellyfin_libra
             os.remove(song.original_file)
 
 
-def run_manual(jellyfin_username, jellyfin_password, server, import_dir, jellyfin_library_dir, empty_import_dir, playlist_name):
+def run_manual(jellyfin_username, jellyfin_password, server, import_dir, jellyfin_library_dir, jellyfin_library_id, empty_import_dir, playlist_name, failed_lookups_path):
     if not os.path.isdir(import_dir):
         raise ValueError(f"import directory does not exist: {import_dir}")
     if not os.path.isdir(jellyfin_library_dir):
         raise ValueError(f"jellyfin library directory does not exist: {jellyfin_library_dir}")
 
+    failed_lookups = []
+
     jelly = jellyfin_api.jellyfin(server, jellyfin_username, jellyfin_password)
     songs = import_songs_jellyfin(import_dir, jellyfin_library_dir)
-    jelly.scan_library()
+    jelly.scan_library(jellyfin_library_id)
 
     if playlist_name is not None:
         print(f"creating new playlist {playlist_name}")
-        for song in songs:
-            get_jellyfin_song_id(jelly, song)
+        located_songs, failed_lookups = get_jellyfin_song_ids(jelly, jellyfin_library_id, songs)
         playlist_id = get_create_playlist(jelly, playlist_name)
-        update_playlist(jelly, playlist_id, songs)
+        update_playlist(jelly, playlist_id, located_songs)
+        if failed_lookups:
+            # if we failed some lookups,
+            print("Failed the following lookups:")
+            for failed_lookup in failed_lookups:
+                print(failed_lookup)
 
     if empty_import_dir:
         for song in songs:
             os.remove(song.original_file)
+
+    # update the failed lookups file, so the admin can go fix the playlists later manually :p
+    if failed_lookups:
+        with open(failed_lookups_path, "r+") as failed_lookups_file:
+            failed_lookups_file.write(f"playlist name: {playlist_name}")
+            for failed_lookup in failed_lookups:
+                failed_lookups_file.write(failed_lookup)
+
 
 @click.command()
 @click.option("--jellyfin_username", type=str, required=True, help="username of the user to login as")
